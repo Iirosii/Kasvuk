@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kasvukäyrät – Pojat 0–2 v | Ikä–Paino</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #edf2f8;
+      color: #1e2a3a;
+      padding: 20px;
+    }
+
+    .container { max-width: 980px; margin: 0 auto; }
+
+    header {
+      background: linear-gradient(135deg, #004f9e 0%, #0070c0 100%);
+      color: white;
+      border-radius: 12px;
+      padding: 20px 28px;
+      margin-bottom: 20px;
+    }
+    header h1 { font-size: 1.55rem; letter-spacing: 0.4px; }
+    header p  { font-size: 0.82rem; opacity: 0.85; margin-top: 5px; }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px 24px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.09);
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #004f9e;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e4edf8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #556;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .field input[type="date"],
+    .field input[type="number"],
+    .field input[type="text"] {
+      height: 38px;
+      padding: 0 12px;
+      border: 1.5px solid #c8d5e8;
+      border-radius: 7px;
+      font-size: 0.93rem;
+      color: #1e2a3a;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      min-width: 140px;
+    }
+    .field input:focus {
+      border-color: #0070c0;
+      box-shadow: 0 0 0 3px rgba(0,112,192,0.13);
+    }
+
+    .btn {
+      height: 38px;
+      padding: 0 22px;
+      border: none;
+      border-radius: 7px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.18s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: #0070c0; color: white; }
+    .btn-primary:hover { background: #005baa; }
+    .btn-ghost {
+      background: transparent;
+      color: #777;
+      border: 1.5px solid #ccc;
+      font-size: 0.78rem;
+      height: 30px;
+      padding: 0 14px;
+    }
+    .btn-ghost:hover { background: #f4f4f4; color: #444; }
+    .btn-del {
+      background: transparent;
+      color: #b22;
+      border: 1.5px solid #f0c0c0;
+      font-size: 0.76rem;
+      font-weight: 700;
+      height: 28px;
+      padding: 0 11px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .btn-del:hover { background: #fff0f0; }
+
+    .chart-wrap {
+      position: relative;
+      height: 460px;
+    }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    thead th {
+      background: #f3f7fc;
+      padding: 9px 14px;
+      text-align: left;
+      font-weight: 700;
+      color: #445;
+      font-size: 0.77rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    tbody td { padding: 9px 14px; border-bottom: 1px solid #f0f2f5; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #f7fbff; }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+    .badge-ok    { background: #d6f5e3; color: #1a6635; }
+    .badge-warn  { background: #fff4d0; color: #7a5500; }
+    .badge-alert { background: #ffe0dd; color: #a41c10; }
+
+    .empty {
+      text-align: center;
+      color: #aaa;
+      padding: 22px;
+      font-style: italic;
+      font-size: 0.9rem;
+    }
+
+    .note {
+      font-size: 0.73rem;
+      color: #9aa;
+      margin-top: 12px;
+      font-style: italic;
+      line-height: 1.5;
+    }
+
+    /* ── Drop-zone (Excel / CSV upload) ── */
+    .drop-zone {
+      border: 2px dashed #b0c8e8;
+      border-radius: 10px;
+      padding: 24px;
+      text-align: center;
+      color: #7a9ab5;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      font-size: 0.88rem;
+      line-height: 1.8;
+      user-select: none;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: #0070c0;
+      background: #f0f7ff;
+      color: #0070c0;
+    }
+    .drop-icon { font-size: 1.7rem; display: block; margin-bottom: 4px; }
+    .preview-wrap {
+      margin-top: 14px;
+      max-height: 210px; overflow-y: auto;
+      border: 1px solid #e4edf8; border-radius: 8px;
+    }
+    .preview-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+    .preview-table thead th {
+      background: #f3f7fc; padding: 7px 12px; text-align: left;
+      font-weight: 700; color: #445; font-size: 0.76rem;
+      text-transform: uppercase; letter-spacing: 0.4px;
+      position: sticky; top: 0; z-index: 1;
+    }
+    .preview-table tbody td { padding: 7px 12px; border-bottom: 1px solid #f0f2f5; }
+    .preview-row-ok  td { color: #1a6635; }
+    .preview-row-dup td { color: #7a5500; background: #fffbe6; }
+    .preview-row-err td { color: #a41c10; }
+    .preview-actions { display: flex; gap: 10px; margin-top: 12px; justify-content: flex-end; }
+
+    /* ── Simulation ── */
+    .sim-header {
+      display: flex; align-items: center; gap: 14px;
+      font-size: 0.82rem; font-weight: 700; color: #004f9e;
+      text-transform: uppercase; letter-spacing: 0.7px;
+      margin-bottom: 14px; padding-bottom: 10px;
+      border-bottom: 2px solid #e4edf8;
+    }
+    .sim-toggle-btn {
+      margin-left: auto;
+      height: 30px; padding: 0 16px;
+      border: 1.5px solid #0070c0; border-radius: 20px;
+      background: white; color: #0070c0; font-weight: 700;
+      font-size: 0.8rem; cursor: pointer; transition: all 0.2s;
+    }
+    .sim-toggle-btn.active { background: #0070c0; color: white; }
+    .sim-toggle-btn:hover:not(.active) { background: #f0f7ff; }
+    .sim-panel { display: none; }
+    .sim-panel.visible { display: block; }
+    .sim-result {
+      background: #f0f7ff; border: 1px solid #c5ddf5;
+      border-radius: 8px; padding: 12px 16px;
+      margin-top: 14px; font-size: 0.86rem; line-height: 1.9;
+    }
+    .sim-dashed-legend {
+      display: inline-block; width: 24px; height: 0;
+      border-top: 2.5px dashed #0070c0;
+      vertical-align: middle; margin-right: 5px;
+    }
+
+    /* ── Chart zoom bar ── */
+    .zoom-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+    .zoom-btn {
+      height: 28px; padding: 0 14px;
+      border: 1.5px solid #c8d5e8; border-radius: 20px;
+      background: white; color: #556; font-size: 0.78rem; font-weight: 700;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .zoom-btn:hover  { border-color: #0070c0; color: #0070c0; }
+    .zoom-btn.active { background: #0070c0; border-color: #0070c0; color: white; }
+
+    /* ── Gains analysis ── */
+    .tab-bar { display: flex; margin-bottom: 16px; border-bottom: 2px solid #e4edf8; }
+    .tab-btn {
+      padding: 8px 20px; font-size: 0.82rem; font-weight: 700;
+      color: #778; background: none; border: none; cursor: pointer;
+      border-bottom: 3px solid transparent; margin-bottom: -2px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn:hover { color: #0070c0; }
+    .tab-btn.active { color: #0070c0; border-bottom-color: #0070c0; }
+    .gains-stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .stat-chip {
+      background: #f3f7fc; border-radius: 8px; padding: 10px 16px;
+      font-size: 0.8rem; flex: 1; min-width: 120px; text-align: center; color: #556;
+    }
+    .stat-chip .val { font-size: 1.2rem; font-weight: 700; color: #0070c0; display: block; margin-top: 4px; }
+    .gains-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .gains-table thead th {
+      background: #f3f7fc; padding: 8px 12px; text-align: left;
+      font-weight: 700; color: #445; font-size: 0.76rem;
+      text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .gains-table tbody td { padding: 8px 12px; border-bottom: 1px solid #f0f2f5; }
+    .gains-table tbody tr:last-child td { border-bottom: none; }
+    .gains-table tbody tr:hover td { background: #f7fbff; }
+    .gain-pos  { color: #1a6635; font-weight: 700; }
+    .gain-neg  { color: #a41c10; font-weight: 700; }
+    .gain-zero { color: #888; }
+
+    @media (max-width: 580px) {
+      .form-row { flex-direction: column; }
+      .field input { min-width: 100%; }
+      header h1 { font-size: 1.2rem; }
+      .chart-wrap { height: 320px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>KASVUKÄYRÄT / POJAT / 0–2-vuotiaat &nbsp;·&nbsp; Ikä–Paino</h1>
+    <p>Referenssi: Saari et al. Ann Med 2011 (Itä-Suomen yliopiston kasvututkimusryhmä)</p>
+  </header>
+
+  <!-- Profile -->
+  <div class="card">
+    <div class="card-title">Lapsen tiedot</div>
+    <div class="form-row">
+      <div class="field">
+        <label>Syntymäpäivä</label>
+        <input type="date" id="birthdate">
+      </div>
+      <div class="field">
+        <label>Nimi (valinnainen)</label>
+        <input type="text" id="childname" placeholder="Etunimi" style="min-width:180px">
+      </div>
+      <button class="btn btn-primary" onclick="saveProfile()">Tallenna tiedot</button>
+    </div>
+  </div>
+
+  <!-- Add measurement -->
+  <div class="card">
+    <div class="card-title">Lisää painomittaus</div>
+    <div class="form-row">
+      <div class="field">
+        <label>Mittauspäivä</label>
+        <input type="date" id="measDate">
+      </div>
+      <div class="field">
+        <label>Paino (kg)</label>
+        <input type="number" id="measWeight" step="0.01" min="0.5" max="30" placeholder="10.50" style="min-width:115px">
+      </div>
+      <button class="btn btn-primary" onclick="addMeasurement()">Lisää mittaus</button>
+    </div>
+  </div>
+
+  <!-- Excel Upload -->
+  <div class="card">
+    <div class="card-title">Tuo mittaukset Excelistä tai CSV:stä</div>
+    <div class="drop-zone" id="dropZone"
+         onclick="document.getElementById('fileInput').click()"
+         ondragover="dragOver(event)"
+         ondragleave="dragLeave(event)"
+         ondrop="dropFile(event)">
+      <span class="drop-icon">📂</span>
+      <strong>Vedä tiedosto tähän</strong> tai klikkaa valitaksesi<br>
+      <small style="opacity:0.72">.xlsx &nbsp;·&nbsp; .xls &nbsp;·&nbsp; .csv &nbsp;|&nbsp; Sarakkeet: päivämäärä, paino (kg)</small>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv"
+             onchange="handleFileInput(event)" style="display:none">
+    </div>
+    <div id="previewWrap" style="display:none">
+      <div class="preview-wrap">
+        <table class="preview-table">
+          <thead>
+            <tr><th>#</th><th>Päivämäärä</th><th>Paino (kg)</th><th>SD</th><th>Tila</th></tr>
+          </thead>
+          <tbody id="previewTbody"></tbody>
+        </table>
+      </div>
+      <div class="preview-actions">
+        <button class="btn btn-ghost" onclick="cancelImport()">Peruuta</button>
+        <button class="btn btn-primary" id="confirmImportBtn" onclick="confirmImport()">Tuo mittaukset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Simulation -->
+  <div class="card">
+    <div class="sim-header">
+      <span>Painon kehityksen simulointi</span>
+      <button class="sim-toggle-btn" id="simToggleBtn" onclick="toggleSim()">Aktivoi simulointi</button>
+    </div>
+    <div class="sim-panel" id="simPanel">
+      <div class="form-row">
+        <div class="field">
+          <label>Lähtöpäivä</label>
+          <input type="date" id="simStartDate">
+        </div>
+        <div class="field">
+          <label>Lähtöpaino (kg)</label>
+          <input type="number" id="simStartWeight" step="0.01" min="0.5" max="30"
+                 placeholder="esim. 8.50" style="min-width:120px">
+        </div>
+        <div class="field">
+          <label>Kasvu (g/vrk)</label>
+          <input type="number" id="simDailyGain" value="30" step="1" min="1" max="200" style="min-width:90px">
+        </div>
+        <div class="field">
+          <label>Kesto (päivää)</label>
+          <input type="number" id="simDuration" value="90" step="1" min="7" max="365" style="min-width:90px">
+        </div>
+        <button class="btn btn-primary" onclick="updateSim()">Päivitä</button>
+      </div>
+      <div id="simResult" class="sim-result" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="card">
+    <div class="card-title">
+      <span>Ikä–Paino käyrä</span>
+      <span style="font-size:0.75rem;color:#888;font-weight:400;text-transform:none;letter-spacing:0">
+        Vie osoitin pisteiden päälle nähdäksesi SD-arvon
+      </span>
+    </div>
+    <div class="zoom-bar">
+      <button class="zoom-btn active" data-zoom="all" onclick="setZoom('all')">Kaikki</button>
+      <button class="zoom-btn" data-zoom="6m"  onclick="setZoom('6m')">6 kk</button>
+      <button class="zoom-btn" data-zoom="3m"  onclick="setZoom('3m')">3 kk</button>
+      <button class="zoom-btn" data-zoom="1m"  onclick="setZoom('1m')">1 kk</button>
+      <button class="zoom-btn" data-zoom="2w"  onclick="setZoom('2w')">2 vk</button>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="growthChart"></canvas>
+    </div>
+    <p class="note">
+      * SD-referenssiarvot ovat likiarvoja digitoiduista käyrästöistä (Saari et al. Ann Med 2011).
+      Diagnostiikassa käytä aina virallisia käyriä osoitteesta www.kasvukayrat.fi.
+      Vihreä = ±1,5 SD (normaali), keltainen = 1,5–2 SD, punainen = yli 2 SD.
+    </p>
+  </div>
+
+  <!-- History -->
+  <div class="card">
+    <div class="card-title">
+      <span>Mittaushistoria</span>
+      <button class="btn btn-ghost" onclick="confirmClear()">Tyhjennä kaikki</button>
+    </div>
+    <div id="tableWrap">
+      <p class="empty">Ei mittauksia vielä. Lisää ensimmäinen mittaus yllä.</p>
+    </div>
+  </div>
+
+  <!-- Gains Analysis -->
+  <div class="card">
+    <div class="card-title">Painonkehityksen analyysi</div>
+    <div class="gains-stats" id="gainsStats"></div>
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tabWeekly"  onclick="setGainsView('weekly')">Viikkoseuranta</button>
+      <button class="tab-btn"        id="tabMonthly" onclick="setGainsView('monthly')">Kuukausiseuranta</button>
+    </div>
+    <div id="gainsTableWrap">
+      <p class="empty">Ei mittauksia vielä.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+//  Finnish boys 0–2 years: Weight-for-age SD reference
+//  Approximated from official Finnish growth charts (Saari et al. Ann Med 2011)
+//  Ages in fractional years (0.0–2.0, step 0.1)
+// ─────────────────────────────────────────────────────────────────────────────
+const AGES = [
+  0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7,
+  0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5,
+  1.6, 1.7, 1.8, 1.9, 2.0
+];
+
+const REF = {
+  //        0    0.1  0.2  0.3  0.4  0.5  0.6  0.7  0.8  0.9  1.0  1.1  1.2  1.3  1.4  1.5  1.6  1.7  1.8  1.9  2.0
+  n2: [2.4, 3.6, 4.5, 5.2, 5.8, 6.2, 6.6, 7.0, 7.3, 7.6, 7.8, 8.0, 8.2, 8.4, 8.6, 8.8, 9.0, 9.2, 9.4, 9.6, 9.8],
+  n1: [3.0, 4.3, 5.3, 6.1, 6.7, 7.2, 7.7, 8.1, 8.5, 8.8, 9.1, 9.4, 9.6, 9.9,10.2,10.4,10.7,10.9,11.2,11.4,11.7],
+  p0: [3.6, 5.1, 6.2, 7.1, 7.8, 8.3, 8.9, 9.4, 9.8,10.2,10.5,10.8,11.1,11.4,11.7,12.0,12.3,12.6,12.9,13.2,13.5],
+  p1: [4.2, 6.0, 7.3, 8.3, 9.1, 9.7,10.3,10.8,11.3,11.8,12.2,12.6,12.9,13.3,13.6,14.0,14.3,14.7,15.0,15.4,15.7],
+  p2: [4.9, 6.9, 8.4, 9.6,10.6,11.3,12.0,12.6,13.2,13.7,14.2,14.7,15.1,15.5,15.9,16.3,16.7,17.1,17.5,17.9,18.3]
+};
+
+// ─── Persistence ──────────────────────────────────────────────────────────────
+let profile       = JSON.parse(localStorage.getItem('gk_profile') || '{}');
+let meas          = JSON.parse(localStorage.getItem('gk_meas')    || '[]');
+let simEnabled    = false;
+let simLine       = [];   // [{x: ageYrs, y: weightKg}, ...]
+let simDots       = [];   // 14-day interval markers
+let pendingImport = [];   // rows from file awaiting confirmation
+let chartZoom     = 'all';
+let gainsView     = 'weekly';
+let currentXMax   = 2.0;
+
+// Restore fields
+if (profile.birthdate) document.getElementById('birthdate').value = profile.birthdate;
+if (profile.childname) document.getElementById('childname').value = profile.childname;
+document.getElementById('measDate').value = new Date().toISOString().slice(0, 10);
+
+// ─── Math helpers ─────────────────────────────────────────────────────────────
+function ageYears(bd, md) {
+  return (new Date(md) - new Date(bd)) / (365.25 * 86400000);
+}
+
+function lerp(age, arr) {
+  if (age <= AGES[0])               return arr[0];
+  if (age >= AGES[AGES.length - 1]) return arr[arr.length - 1];
+  for (let i = 0; i < AGES.length - 1; i++) {
+    if (age >= AGES[i] && age < AGES[i + 1]) {
+      const t = (age - AGES[i]) / (AGES[i + 1] - AGES[i]);
+      return arr[i] + t * (arr[i + 1] - arr[i]);
+    }
+  }
+  return arr[arr.length - 1];
+}
+
+function calcSD(age, weight) {
+  const pts = [
+    { sd: -2, v: lerp(age, REF.n2) },
+    { sd: -1, v: lerp(age, REF.n1) },
+    { sd:  0, v: lerp(age, REF.p0) },
+    { sd:  1, v: lerp(age, REF.p1) },
+    { sd:  2, v: lerp(age, REF.p2) }
+  ];
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (weight >= pts[i].v && weight <= pts[i + 1].v) {
+      const t = (weight - pts[i].v) / (pts[i + 1].v - pts[i].v);
+      return pts[i].sd + t;
+    }
+  }
+  // extrapolate outside range
+  if (weight < pts[0].v) {
+    return -2 + (weight - pts[0].v) / (pts[1].v - pts[0].v);
+  }
+  return  2  + (weight - pts[4].v) / (pts[4].v - pts[3].v);
+}
+
+function sdBadge(sd) {
+  const sign = sd >= 0 ? '+' : '';
+  const lbl  = `${sign}${sd.toFixed(2)} SD`;
+  const cls  = Math.abs(sd) > 2   ? 'badge-alert'
+             : Math.abs(sd) > 1.5 ? 'badge-warn'
+             :                      'badge-ok';
+  return `<span class="badge ${cls}">${lbl}</span>`;
+}
+
+// ─── Actions ──────────────────────────────────────────────────────────────────
+function saveProfile() {
+  profile.birthdate = document.getElementById('birthdate').value;
+  profile.childname = document.getElementById('childname').value.trim();
+  localStorage.setItem('gk_profile', JSON.stringify(profile));
+  render();
+}
+
+function addMeasurement() {
+  const bd = profile.birthdate || document.getElementById('birthdate').value;
+  if (!bd) { alert('Syötä ensin syntymäpäivä ja tallenna lapsen tiedot.'); return; }
+
+  const md = document.getElementById('measDate').value;
+  const w  = parseFloat(document.getElementById('measWeight').value);
+  if (!md || isNaN(w) || w <= 0) { alert('Tarkista mittauspäivä ja paino.'); return; }
+
+  const age = ageYears(bd, md);
+  if (age < -0.01)  { alert('Mittauspäivä on ennen syntymäpäivää.'); return; }
+  if (age > 2.05)   { alert('Tämä käyrä kattaa vain iän 0–2 vuotta.'); return; }
+
+  const existIdx = meas.findIndex(m => m.date === md);
+  if (existIdx >= 0) {
+    if (!confirm(`Päivämäärälle ${md} on jo mittaus. Korvataanko?`)) return;
+    meas.splice(existIdx, 1);
+  }
+
+  meas.push({ date: md, weight: w, age: parseFloat(Math.max(0, age).toFixed(4)) });
+  meas.sort((a, b) => a.date.localeCompare(b.date));
+  localStorage.setItem('gk_meas', JSON.stringify(meas));
+  render();
+}
+
+function deleteMeas(i) {
+  meas.splice(i, 1);
+  localStorage.setItem('gk_meas', JSON.stringify(meas));
+  render();
+}
+
+function confirmClear() {
+  if (meas.length === 0) return;
+  if (confirm('Poistetaanko kaikki mittaukset? Tätä ei voi perua.')) {
+    meas = [];
+    localStorage.setItem('gk_meas', JSON.stringify(meas));
+    render();
+  }
+}
+
+// ─── Excel / CSV import ───────────────────────────────────────────────────────
+function detectColumns(headers) {
+  const datePh   = ['date','päivämäärä','pvm','päivä','datum','day'];
+  const weightPh = ['weight','paino','pai','massa','kg','kilo','vikt'];
+  let di = -1, wi = -1;
+  headers.forEach((h, i) => {
+    const lh = String(h).toLowerCase().trim();
+    if (di < 0 && datePh.some(k   => lh.includes(k))) di = i;
+    if (wi < 0 && weightPh.some(k => lh.includes(k))) wi = i;
+  });
+  return { di: di < 0 ? 0 : di, wi: wi < 0 ? 1 : wi };
+}
+
+function excelSerialToISO(serial) {
+  const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
+  return d.toISOString().slice(0, 10);
+}
+
+function parseRawDate(val) {
+  if (!val && val !== 0) return null;
+  if (typeof val === 'number') return excelSerialToISO(val);
+  const s = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const fi = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (fi) return `${fi[3]}-${fi[2].padStart(2,'0')}-${fi[1].padStart(2,'0')}`;
+  const sl = s.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+  if (sl) return `${sl[1]}-${sl[2]}-${sl[3]}`;
+  const dt = new Date(s);
+  return isNaN(dt) ? null : dt.toISOString().slice(0, 10);
+}
+
+function processFileData(aoa) {
+  if (!aoa || aoa.length < 2) { alert('Tiedosto on tyhjä tai siitä puuttuu rivejä.'); return; }
+  // Use saved profile OR whatever is currently typed in the birthdate field
+  const bd = profile.birthdate || document.getElementById('birthdate').value;
+  if (!bd) { alert('Syötä ensin syntymäpäivä ja tallenna lapsen tiedot.'); return; }
+  // Auto-save if not already saved
+  if (!profile.birthdate && bd) {
+    profile.birthdate = bd;
+    localStorage.setItem('gk_profile', JSON.stringify(profile));
+  }
+  const headers = aoa[0].map(String);
+  const { di, wi } = detectColumns(headers);
+  const rows = aoa.slice(1).filter(r => r && (r[di] || r[wi]));
+  pendingImport = [];
+  rows.forEach((row, ri) => {
+    const dateStr = parseRawDate(row[di]);
+    const weight  = parseFloat(String(row[wi] ?? '').replace(',', '.'));
+    if (!dateStr || isNaN(weight) || weight <= 0 || weight > 30) {
+      pendingImport.push({ row: ri + 2, dateStr: dateStr || '?', weight, status: 'err' });
+      return;
+    }
+    const ageRaw = ageYears(bd, dateStr);
+    if (ageRaw < -0.01 || ageRaw > 2.05) {
+      pendingImport.push({ row: ri + 2, dateStr, weight, age: ageRaw, status: 'oor' });
+      return;
+    }
+    const age = parseFloat(Math.max(0, ageRaw).toFixed(4));
+    const dup = meas.some(m => m.date === dateStr);
+    pendingImport.push({ row: ri + 2, dateStr, weight, age, status: dup ? 'dup' : 'ok' });
+  });
+  if (pendingImport.length === 0) { alert('Ei kelvollisia rivejä löydetty.'); return; }
+  showPreview(bd);
+}
+
+function handleFileInput(e) {
+  const file = e.target.files[0];
+  if (file) readFile(file);
+  e.target.value = '';
+}
+
+function dragOver(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.add('drag-over');
+}
+function dragLeave() {
+  document.getElementById('dropZone').classList.remove('drag-over');
+}
+function dropFile(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) readFile(file);
+}
+
+function readFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+  reader.onerror = () => alert('Tiedoston lukeminen epäonnistui.');
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      if (ext === 'csv') {
+        const text = new TextDecoder('utf-8').decode(data);
+        const aoa  = text.trim().split(/\r?\n/).map(r => r.split(/[;,\t]/));
+        processFileData(aoa);
+      } else {
+        const wb  = XLSX.read(data, { type: 'array' });
+        const ws  = wb.Sheets[wb.SheetNames[0]];
+        const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        processFileData(aoa);
+      }
+    } catch (err) {
+      alert('Tiedoston käsittelyvirhe: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showPreview(bd) {
+  const tbody = document.getElementById('previewTbody');
+  tbody.innerHTML = pendingImport.map(item => {
+    let statusHtml, rowClass, sdTxt = '–';
+    if (item.status === 'ok' || item.status === 'dup') {
+      const sd = calcSD(item.age, item.weight);
+      sdTxt    = (sd >= 0 ? '+' : '') + sd.toFixed(2) + ' SD';
+    }
+    if (item.status === 'ok') {
+      statusHtml = '<span style="color:#1a6635">✓ Lisätään</span>';
+      rowClass   = 'preview-row-ok';
+    } else if (item.status === 'dup') {
+      statusHtml = '<span style="color:#7a5500">⚠ Korvaa vanhan</span>';
+      rowClass   = 'preview-row-dup';
+    } else if (item.status === 'oor') {
+      statusHtml = '<span style="color:#a41c10">✗ Ikä > 2 v</span>';
+      rowClass   = 'preview-row-err';
+    } else {
+      statusHtml = '<span style="color:#a41c10">✗ Virheellinen</span>';
+      rowClass   = 'preview-row-err';
+    }
+    const wTxt = (!isNaN(item.weight) && item.weight > 0)
+      ? item.weight.toFixed(2) + ' kg' : '?';
+    return `<tr class="${rowClass}">
+      <td>${item.row}</td><td>${item.dateStr}</td>
+      <td>${wTxt}</td><td>${sdTxt}</td><td>${statusHtml}</td>
+    </tr>`;
+  }).join('');
+
+  const addCount = pendingImport.filter(p => p.status === 'ok' || p.status === 'dup').length;
+  const oorCount = pendingImport.filter(p => p.status === 'oor').length;
+  document.getElementById('confirmImportBtn').textContent = `Tuo ${addCount} mittausta`;
+  document.getElementById('confirmImportBtn').disabled   = addCount === 0;
+
+  const isWarn = addCount === 0;
+  const warnMsg = isWarn && oorCount > 0
+    ? ' &nbsp;⚠️ Kaikki rivit hylättiin ikärajoituksen takia — onko syntymäpäivä oikein?'
+    : '';
+  const noteHtml = `<div style="font-size:0.78rem;padding:8px 12px;margin-bottom:8px;
+      border-radius:6px;background:${isWarn ? '#fff3cd' : '#f0f7ff'};
+      border:1px solid ${isWarn ? '#ffc107' : '#c5ddf5'}">
+    📅 Syntymäpäivä käytössä: <strong>${bd}</strong>${warnMsg}
+  </div>`;
+
+  const pw = document.getElementById('previewWrap');
+  const old = pw.querySelector('.bd-note');
+  if (old) old.remove();
+  const noteEl = document.createElement('div');
+  noteEl.className = 'bd-note';
+  noteEl.innerHTML = noteHtml;
+  pw.insertBefore(noteEl, pw.firstChild);
+
+  pw.style.display = 'block';
+}
+
+function cancelImport() {
+  pendingImport = [];
+  document.getElementById('previewWrap').style.display = 'none';
+}
+
+function confirmImport() {
+  pendingImport.forEach(item => {
+    if (item.status !== 'ok' && item.status !== 'dup') return;
+    const idx = meas.findIndex(m => m.date === item.dateStr);
+    if (idx >= 0) meas.splice(idx, 1);
+    meas.push({ date: item.dateStr, weight: item.weight, age: item.age });
+  });
+  meas.sort((a, b) => a.date.localeCompare(b.date));
+  localStorage.setItem('gk_meas', JSON.stringify(meas));
+  pendingImport = [];
+  document.getElementById('previewWrap').style.display = 'none';
+  render();
+}
+
+// ─── Simulation ───────────────────────────────────────────────────────────────
+function toggleSim() {
+  simEnabled = !simEnabled;
+  const btn = document.getElementById('simToggleBtn');
+  btn.classList.toggle('active', simEnabled);
+  btn.textContent = simEnabled ? 'Simulointi päällä ✓' : 'Aktivoi simulointi';
+  document.getElementById('simPanel').classList.toggle('visible', simEnabled);
+  if (simEnabled) prefillSim();
+  else { simLine = []; document.getElementById('simResult').style.display = 'none'; }
+  render();
+}
+
+function prefillSim() {
+  const sd = document.getElementById('simStartDate');
+  const sw = document.getElementById('simStartWeight');
+  if (meas.length > 0 && !sd.value) {
+    const last = meas[meas.length - 1];
+    sd.value = last.date;
+    sw.value = last.weight.toFixed(2);
+  }
+}
+
+function updateSim() {
+  calcSimLine();
+  renderChart();
+}
+
+function calcSimLine() {
+  simLine = [];
+  simDots = [];
+  if (!simEnabled) return;
+  const bd = profile.birthdate;
+  if (!bd) return;
+  const startDateStr   = document.getElementById('simStartDate').value;
+  const startWeight    = parseFloat(document.getElementById('simStartWeight').value);
+  const dailyGainGrams = parseFloat(document.getElementById('simDailyGain').value) || 30;
+  const durationDays   = parseInt(document.getElementById('simDuration').value)    || 90;
+  if (!startDateStr || isNaN(startWeight) || startWeight <= 0) return;
+  const startMs = new Date(startDateStr).getTime();
+  for (let d = 0; d <= durationDays; d++) {
+    const dtMs  = startMs + d * 86400000;
+    const dtStr = new Date(dtMs).toISOString().slice(0, 10);
+    const age   = ageYears(bd, dtStr);
+    const w     = startWeight + (dailyGainGrams / 1000) * d;
+    if (age < 0 || age > 2.05 || w <= 0 || w > 25) continue;
+    const pt = { x: parseFloat(Math.max(0, age).toFixed(4)), y: parseFloat(w.toFixed(3)) };
+    simLine.push(pt);
+    if (d % 14 === 0) simDots.push(pt);
+  }
+  showSimResult(startDateStr, startWeight, durationDays, dailyGainGrams, bd);
+}
+
+function showSimResult(startDateStr, startWeight, durationDays, dailyGainGrams, bd) {
+  const res = document.getElementById('simResult');
+  if (!simLine.length) { res.style.display = 'none'; return; }
+  const endDateStr = new Date(new Date(startDateStr).getTime() + durationDays * 86400000)
+                       .toISOString().slice(0, 10);
+  const endWeight  = startWeight + (dailyGainGrams / 1000) * durationDays;
+  const startAge   = Math.max(0, ageYears(bd, startDateStr));
+  const endAge     = Math.max(0, ageYears(bd, endDateStr));
+  const sdStart    = calcSD(startAge, startWeight);
+  const sdEnd      = calcSD(endAge,   endWeight);
+  const badge = sd => {
+    const col = Math.abs(sd) > 2 ? '#a41c10' : Math.abs(sd) > 1.5 ? '#7a5500' : '#1a6635';
+    return `<span style="font-weight:700;color:${col}">${(sd >= 0 ? '+' : '') + sd.toFixed(2)} SD</span>`;
+  };
+  res.style.display = 'block';
+  res.innerHTML =
+    `<span class="sim-dashed-legend"></span>
+    <strong>Simulaatio:</strong> +${dailyGainGrams} g/vrk &nbsp;·&nbsp; ${durationDays} päivää<br>
+    Lähtö &nbsp;&nbsp;→ <strong>${startDateStr}</strong> &nbsp;${startWeight.toFixed(2)} kg &nbsp;${badge(sdStart)}<br>
+    Ennuste → <strong>${endDateStr}</strong> &nbsp;${endWeight.toFixed(2)} kg &nbsp;${badge(sdEnd)}
+    &nbsp;<span style="color:#888;font-size:0.82rem">(ikä ${endAge.toFixed(2)} v)</span>`;
+}
+
+// ─── Zoom ─────────────────────────────────────────────────────────────────────
+function setZoom(z) {
+  chartZoom = z;
+  document.querySelectorAll('.zoom-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.zoom === z));
+  renderChart();
+}
+
+function getZoomBounds() {
+  const spans = { all: null, '6m': 0.5, '3m': 0.25, '1m': 1/12, '2w': 14/365.25 };
+  const span  = spans[chartZoom];
+  if (!span) return { xMin: 0, xMax: 2 };
+  let refAge = 0;
+  if (meas.length > 0) {
+    refAge = meas[meas.length - 1].age;
+  } else if (profile.birthdate) {
+    refAge = Math.max(0, ageYears(profile.birthdate, new Date().toISOString().slice(0, 10)));
+  }
+  return {
+    xMin: parseFloat(Math.max(0,    refAge - span).toFixed(4)),
+    xMax: parseFloat(Math.min(2.0,  refAge + span * 0.12).toFixed(4))
+  };
+}
+
+function getYBounds(xMin, xMax) {
+  if (chartZoom === 'all') return { yMin: 0, yMax: 20 };
+  const allY = [];
+  for (const key of ['n2', 'n1', 'p0', 'p1', 'p2']) {
+    AGES.forEach((a, i) => { if (a >= xMin - 0.05 && a <= xMax + 0.05) allY.push(REF[key][i]); });
+  }
+  meas.forEach(m  => { if (m.age >= xMin && m.age <= xMax) allY.push(m.weight); });
+  simLine.forEach(p => { if (p.x  >= xMin && p.x  <= xMax) allY.push(p.y); });
+  if (!allY.length) return { yMin: 0, yMax: 20 };
+  const lo  = Math.min(...allY), hi = Math.max(...allY);
+  const pad = Math.max(0.2, (hi - lo) * 0.18);
+  return {
+    yMin: parseFloat(Math.max(0, lo - pad).toFixed(2)),
+    yMax: parseFloat((hi + pad).toFixed(2))
+  };
+}
+
+function ageToDateStr(ageYrs) {
+  if (!profile.birthdate) return '';
+  return new Date(new Date(profile.birthdate).getTime() + ageYrs * 365.25 * 86400000)
+    .toISOString().slice(0, 10);
+}
+
+// ─── Gains analysis ───────────────────────────────────────────────────────────
+function setGainsView(v) {
+  gainsView = v;
+  document.getElementById('tabWeekly') .classList.toggle('active', v === 'weekly');
+  document.getElementById('tabMonthly').classList.toggle('active', v === 'monthly');
+  renderGains();
+}
+
+function isoWeekKey(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() + 4 - day);
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  const wk = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return `${d.getFullYear()}-W${String(wk).padStart(2, '0')}`;
+}
+
+function weekLabel(key) {
+  const [yr, wStr] = key.split('-W');
+  const wn   = +wStr;
+  const jan4 = new Date(+yr, 0, 4);
+  const dow  = jan4.getDay() || 7;
+  const mon  = new Date(jan4); mon.setDate(jan4.getDate() - dow + 1 + (wn - 1) * 7);
+  const sun  = new Date(mon);  sun.setDate(mon.getDate() + 6);
+  const fmt  = d => `${d.getDate()}.${d.getMonth() + 1}.`;
+  return `Vk&nbsp;${wn}&nbsp;(${fmt(mon)}&ndash;${fmt(sun)})`;
+}
+
+function renderGains() {
+  const statsEl = document.getElementById('gainsStats');
+  const wrapEl  = document.getElementById('gainsTableWrap');
+  if (meas.length < 2) {
+    statsEl.innerHTML = '';
+    wrapEl.innerHTML  = '<p class="empty">Tarvitaan vähintään 2 mittausta analyysia varten.</p>';
+    return;
+  }
+
+  // ── Stats chips ──────────────────────────────────────────────────────────
+  const last    = meas[meas.length - 1];
+  const lastDt  = new Date(last.date + 'T12:00:00');
+
+  function gainSince(days) {
+    const cutoff = new Date(lastDt); cutoff.setDate(cutoff.getDate() - days);
+    const older  = meas.filter(m => new Date(m.date + 'T12:00:00') <= cutoff);
+    if (!older.length) return null;
+    const ref  = older[older.length - 1];
+    const diff = (last.weight - ref.weight) * 1000;
+    const d    = Math.round((lastDt - new Date(ref.date + 'T12:00:00')) / 86400000);
+    return { grams: Math.round(diff), days: d, perDay: d > 0 ? diff / d : null };
+  }
+
+  const g7  = gainSince(7);
+  const g30 = gainSince(30);
+  const color = g => g && g.grams < 0 ? '#a41c10' : '#1a6635';
+  const fmt   = g => g ? `${g.grams >= 0 ? '+' : ''}${g.grams} g` : '–';
+  const fmtPd = g => g && g.perDay !== null
+    ? `${g.perDay >= 0 ? '+' : ''}${g.perDay.toFixed(1)} g/vrk` : '–';
+
+  statsEl.innerHTML = `
+    <div class="stat-chip">Viim. 7 vrk<span class="val" style="color:${color(g7)}">${fmt(g7)}</span></div>
+    <div class="stat-chip">Viim. 30 vrk<span class="val" style="color:${color(g30)}">${fmt(g30)}</span></div>
+    <div class="stat-chip">Ka. kasvu (30 vrk)<span class="val">${fmtPd(g30)}</span></div>
+    <div class="stat-chip">Mittauksia<span class="val" style="color:#334">${meas.length}</span></div>`;
+
+  if (gainsView === 'weekly') renderWeeklyTable(wrapEl);
+  else                        renderMonthlyTable(wrapEl);
+}
+
+function buildGainsRows(buckets, keys, labelFn) {
+  let rows = '', prevLast = null;
+  for (const k of keys) {
+    const ms    = buckets[k];
+    const first = ms[0], last = ms[ms.length - 1];
+    const ref   = prevLast || first;
+    const gainG = Math.round((last.weight - ref.weight) * 1000);
+    const days  = Math.round(
+      (new Date(last.date + 'T12:00:00') - new Date(ref.date + 'T12:00:00')) / 86400000);
+    const perDay   = days > 0 ? (gainG / days).toFixed(1) : null;
+    const gainCls  = gainG > 0 ? 'gain-pos' : gainG < 0 ? 'gain-neg' : 'gain-zero';
+    const sdLast   = calcSD(last.age, last.weight);
+    const pdTxt    = perDay !== null
+      ? `${parseFloat(perDay) >= 0 ? '+' : ''}${perDay} g/vrk` : '–';
+    rows += `<tr>
+      <td>${labelFn(k)}</td>
+      <td style="text-align:center">${ms.length}</td>
+      <td>${first.weight.toFixed(2)} &rarr; <strong>${last.weight.toFixed(2)} kg</strong></td>
+      <td class="${gainCls}">${gainG >= 0 ? '+' : ''}${gainG} g</td>
+      <td>${pdTxt}</td>
+      <td>${sdBadge(sdLast)}</td>
+    </tr>`;
+    prevLast = last;
+  }
+  return rows;
+}
+
+function renderWeeklyTable(wrapEl) {
+  const buckets = {};
+  meas.forEach(m => {
+    const k = isoWeekKey(m.date);
+    (buckets[k] = buckets[k] || []).push(m);
+  });
+  const keys = Object.keys(buckets).sort();
+  const rows = buildGainsRows(buckets, keys, weekLabel);
+  wrapEl.innerHTML = `<div style="overflow-x:auto"><table class="gains-table">
+    <thead><tr>
+      <th>Viikko</th><th style="text-align:center">Mittaukset</th>
+      <th>Paino (alku&rarr;loppu)</th><th>Muutos</th><th>Ka./vrk</th><th>SD</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function renderMonthlyTable(wrapEl) {
+  const buckets = {};
+  meas.forEach(m => {
+    const k = m.date.slice(0, 7);
+    (buckets[k] = buckets[k] || []).push(m);
+  });
+  const keys = Object.keys(buckets).sort();
+  const months = ['Tammikuu','Helmikuu','Maaliskuu','Huhtikuu','Toukokuu','Kesäkuu',
+                  'Heinäkuu','Elokuu','Syyskuu','Lokakuu','Marraskuu','Joulukuu'];
+  const labelFn = k => { const [yr, mo] = k.split('-'); return `${months[+mo-1]} ${yr}`; };
+  const rows = buildGainsRows(buckets, keys, labelFn);
+  wrapEl.innerHTML = `<div style="overflow-x:auto"><table class="gains-table">
+    <thead><tr>
+      <th>Kuukausi</th><th style="text-align:center">Mittaukset</th>
+      <th>Paino (alku&rarr;loppu)</th><th>Muutos</th><th>Ka./vrk</th><th>SD</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+// ─── Chart ────────────────────────────────────────────────────────────────────
+let chartInst = null;
+
+// Custom plugin: draw SD labels on right edge of chart
+const sdLabelPlugin = {
+  id: 'sdLabels',
+  afterDraw(chart) {
+    const { ctx, chartArea: { right }, scales: { y } } = chart;
+    const entries = [
+      { label: '+2SD', val: lerp(Math.min(2.0, currentXMax), REF.p2) },
+      { label: '+1SD', val: lerp(Math.min(2.0, currentXMax), REF.p1) },
+      { label: '0SD',  val: lerp(Math.min(2.0, currentXMax), REF.p0) },
+      { label: '−1SD', val: lerp(Math.min(2.0, currentXMax), REF.n1) },
+      { label: '−2SD', val: lerp(Math.min(2.0, currentXMax), REF.n2) }
+    ];
+    ctx.save();
+    ctx.font        = 'bold 10.5px Segoe UI, sans-serif';
+    ctx.fillStyle   = '#b80040';
+    ctx.textAlign   = 'left';
+    ctx.textBaseline = 'middle';
+    for (const { label, val } of entries) {
+      ctx.fillText(label, right + 5, y.getPixelForValue(val));
+    }
+    ctx.restore();
+  }
+};
+
+function makeRefDataset(key, label, dash) {
+  return {
+    label,
+    data: AGES.map((a, i) => ({ x: a, y: REF[key][i] })),
+    borderColor: '#cc1a55',
+    borderWidth: key === 'p0' ? 2.2 : 1.4,
+    borderDash: dash,
+    pointRadius: 0,
+    tension: 0.35,
+    fill: false
+  };
+}
+
+function renderChart() {
+  const ctx = document.getElementById('growthChart').getContext('2d');
+
+  const refDatasets = [
+    makeRefDataset('p2', '+2 SD', [8, 4]),
+    makeRefDataset('p1', '+1 SD', [4, 3]),
+    makeRefDataset('p0', '0 SD',  []),
+    makeRefDataset('n1', '−1 SD', [4, 3]),
+    makeRefDataset('n2', '−2 SD', [8, 4])
+  ];
+
+  const childDataset = {
+    label: profile.childname || 'Mittaukset',
+    data: meas.map(m => ({ x: m.age, y: m.weight })),
+    borderColor: '#0070c0',
+    backgroundColor: '#0070c0',
+    pointRadius: 6,
+    pointHoverRadius: 9,
+    pointBackgroundColor: '#0070c0',
+    pointBorderColor: '#fff',
+    pointBorderWidth: 2,
+    tension: 0.3,
+    fill: false,
+    borderWidth: 2.5
+  };
+
+  const simDataset = {
+    label: 'Simulaatio (' + (document.getElementById('simDailyGain').value || 30) + ' g/vrk)',
+    data: simLine.map(p => ({ x: p.x, y: p.y })),
+    borderColor: '#0070c0',
+    borderWidth: 1.8,
+    borderDash: [6, 4],
+    pointRadius: 0,
+    pointHoverRadius: 0,
+    tension: 0.2,
+    fill: false
+  };
+
+  const simDotsDataset = {
+    label: 'Ennustepisteet (2 vk)',
+    data: simDots.map(p => ({ x: p.x, y: p.y })),
+    borderColor: '#0070c0',
+    pointRadius: 7,
+    pointHoverRadius: 10,
+    pointBackgroundColor: '#d0e8ff',
+    pointBorderColor: '#0070c0',
+    pointBorderWidth: 2,
+    showLine: false,
+    fill: false
+  };
+
+  const allDatasets = [
+    ...refDatasets,
+    childDataset,
+    ...(simEnabled && simLine.length ? [simDataset, simDotsDataset] : [])
+  ];
+
+  const { xMin, xMax } = getZoomBounds();
+  const { yMin, yMax } = getYBounds(xMin, xMax);
+  currentXMax = xMax;
+
+  if (chartInst) chartInst.destroy();
+
+  chartInst = new Chart(ctx, {
+    type: 'line',
+    data: { datasets: allDatasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { right: 50, top: 6 } },
+      scales: {
+        x: {
+          type: 'linear',
+          min: xMin,
+          max: xMax,
+          title: {
+            display: true,
+            text: 'Ikä (v)',
+            font: { size: 12, weight: 'bold' },
+            color: '#334'
+          },
+          ticks: {
+            maxTicksLimit: chartZoom === 'all' ? 21 : 14,
+            callback: v => chartZoom === 'all'
+              ? ((Math.round(v * 10) % 5 === 0) ? v.toFixed(1) : '')
+              : v.toFixed(2)
+          },
+          grid: { color: '#dde8f4' }
+        },
+        y: {
+          min: yMin,
+          max: yMax,
+          title: {
+            display: true,
+            text: 'Paino (kg)',
+            font: { size: 12, weight: 'bold' },
+            color: '#334'
+          },
+          ticks: { stepSize: chartZoom === 'all' ? 1 : 0.1 },
+          grid: { color: '#dde8f4' }
+        }
+      },
+      plugins: {
+        legend: {
+          labels: {
+            filter: item => item.datasetIndex === 5 || item.datasetIndex === 6,
+            usePointStyle: true,
+            pointStyleWidth: 18,
+            font: { size: 11 }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label(ctx) {
+              if (ctx.datasetIndex >= 5) {
+                const sd    = calcSD(ctx.parsed.x, ctx.parsed.y);
+                const sign  = sd >= 0 ? '+' : '';
+                const tag   = ctx.datasetIndex === 5 ? 'Mitattu' : 'Ennuste';
+                const when  = ctx.datasetIndex >= 6
+                  ? ` (${ageToDateStr(ctx.parsed.x)})` : '';
+                return ` ${tag}${when}: ${ctx.parsed.y.toFixed(2)} kg  SD: ${sign}${sd.toFixed(2)}`;
+              }
+              return ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} kg`;
+            }
+          }
+        }
+      }
+    },
+    plugins: [sdLabelPlugin]
+  });
+}
+
+// ─── Table ────────────────────────────────────────────────────────────────────
+function renderTable() {
+  const wrap = document.getElementById('tableWrap');
+  if (meas.length === 0) {
+    wrap.innerHTML = '<p class="empty">Ei mittauksia vielä. Lisää ensimmäinen mittaus yllä.</p>';
+    return;
+  }
+  const rows = meas.map((m, i) => {
+    const sd = calcSD(m.age, m.weight);
+    return `<tr>
+      <td>${m.date}</td>
+      <td>${m.age.toFixed(2)} v</td>
+      <td><strong>${m.weight.toFixed(2)} kg</strong></td>
+      <td>${sdBadge(sd)}</td>
+      <td><button class="btn-del" onclick="deleteMeas(${i})">Poista</button></td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Päivämäärä</th>
+          <th>Ikä</th>
+          <th>Paino</th>
+          <th>SD-arvo</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+function render() {
+  if (simEnabled) calcSimLine();
+  renderChart();
+  renderTable();
+  renderGains();
+}
+
+render();
+</script>
+</body>
+</html>
